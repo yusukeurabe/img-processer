@@ -3,24 +3,26 @@
 import { useCallback, useRef, useState } from "react";
 
 type Props = {
-  onFile: (file: File) => void;
+  onFiles: (files: File[]) => void;
 };
 
-export function ImageDropzone({ onFile }: Props) {
+export function ImageDropzone({ onFiles }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
-      const file = files[0];
-      if (!file.type.startsWith("image/")) {
+      const images = Array.from(files).filter((f) =>
+        f.type.startsWith("image/"),
+      );
+      if (images.length === 0) {
         alert("画像ファイルを選択してください");
         return;
       }
-      onFile(file);
+      onFiles(images);
     },
-    [onFile],
+    [onFiles],
   );
 
   return (
@@ -59,7 +61,7 @@ export function ImageDropzone({ onFile }: Props) {
         <path d="M21 15l-5-5L5 21" />
       </svg>
       <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">
-        クリックして画像を選択 または ドラッグ&ドロップ
+        クリックして画像を選択 または ドラッグ&ドロップ（複数可）
       </p>
       <p className="text-sm text-neutral-500 mt-2">
         JPEG / PNG / WebP などの画像ファイル
@@ -68,6 +70,7 @@ export function ImageDropzone({ onFile }: Props) {
         ref={inputRef}
         type="file"
         accept="image/*"
+        multiple
         className="hidden"
         onChange={(e) => handleFiles(e.target.files)}
       />

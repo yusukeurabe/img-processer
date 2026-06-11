@@ -119,7 +119,7 @@ export default function Home() {
       </header>
 
       {!source ? (
-        <ImageDropzone onFile={handleFile} />
+        <ImageDropzone onFiles={(files) => handleFile(files[0])} />
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
           <section className="space-y-4">
