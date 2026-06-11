@@ -128,7 +128,7 @@ export default function Home() {
                 imageUrl={source.url}
                 naturalWidth={source.naturalWidth}
                 naturalHeight={source.naturalHeight}
-                onCropAreaChange={setCropArea}
+                onCropChange={(area) => setCropArea(area)}
               />
             ) : (
               <div className="rounded-2xl bg-neutral-100 dark:bg-neutral-900 p-4 flex items-center justify-center">
