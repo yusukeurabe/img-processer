@@ -58,7 +58,9 @@ export async function processImage(
   }
 
   const targetBytes =
-    opts.output.targetSizeKB != null && opts.output.format !== "image/png"
+    opts.output.targetSizeKB != null &&
+    opts.output.targetSizeKB > 0 &&
+    opts.output.format !== "image/png"
       ? opts.output.targetSizeKB * 1024
       : null;
 
@@ -141,6 +143,11 @@ async function renderToTargetSize(
   for (let i = 0; i < TARGET_SEARCH_STEPS; i++) {
     const mid = (lo + hi) / 2;
     const blob = await renderToBlob(bitmap, sx, sy, sw, sh, dw, dh, format, mid);
+    // ブラウザが指定形式でエンコードできない場合（例: SafariのWebP→PNGフォールバック）、
+    // 品質が結果に影響しないため探索を打ち切る
+    if (blob.type !== format) {
+      return { blob, metTargetSize: blob.size <= targetBytes };
+    }
     if (blob.size <= targetBytes) {
       best = blob;
       lo = mid;
