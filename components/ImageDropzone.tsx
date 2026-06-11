@@ -6,6 +6,9 @@ type Props = {
   onFiles: (files: File[]) => void;
 };
 
+// 一部環境のドラッグ&ドロップではMIMEタイプが空になるため、拡張子でも判定する
+const IMAGE_EXTS = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?|svg)$/i;
+
 export function ImageDropzone({ onFiles }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -13,8 +16,8 @@ export function ImageDropzone({ onFiles }: Props) {
   const handleFiles = useCallback(
     (files: FileList | null) => {
       if (!files || files.length === 0) return;
-      const images = Array.from(files).filter((f) =>
-        f.type.startsWith("image/"),
+      const images = Array.from(files).filter(
+        (f) => f.type.startsWith("image/") || IMAGE_EXTS.test(f.name),
       );
       if (images.length === 0) {
         alert("画像ファイルを選択してください");
