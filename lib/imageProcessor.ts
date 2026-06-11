@@ -1,4 +1,10 @@
-import type { ProcessOptions, ProcessResult, SourceImage } from "./types";
+import {
+  FORMAT_EXTENSION,
+  type OutputFormat,
+  type ProcessOptions,
+  type ProcessResult,
+  type SourceImage,
+} from "./types";
 
 export async function loadImage(file: File): Promise<SourceImage> {
   const bitmap = await createImageBitmap(file, {
@@ -41,10 +47,27 @@ export async function processImage(
     sHeight = Math.min(bitmap.height - sy, Math.round(opts.crop.height));
     dWidth = sWidth;
     dHeight = sHeight;
-  } else {
+  } else if (opts.mode === "resize") {
     if (!opts.resize) throw new Error("resize options are required in resize mode");
     dWidth = Math.max(1, Math.round(opts.resize.width));
     dHeight = Math.max(1, Math.round(opts.resize.height));
+  } else {
+    // compress: 寸法は変えずに再エンコードのみ
+    dWidth = bitmap.width;
+    dHeight = bitmap.height;
+  }
+
+  const targetBytes =
+    opts.output.targetSizeKB != null && opts.output.format !== "image/png"
+      ? opts.output.targetSizeKB * 1024
+      : null;
+
+  if (targetBytes !== null) {
+    const { blob, metTargetSize } = await renderToTargetSize(
+      bitmap, sx, sy, sWidth, sHeight, dWidth, dHeight,
+      opts.output.format, targetBytes,
+    );
+    return { blob, width: dWidth, height: dHeight, metTargetSize };
   }
 
   const blob = await renderToBlob(
@@ -99,6 +122,42 @@ async function renderToBlob(
       quality,
     );
   });
+}
+
+const TARGET_MIN_QUALITY = 0.05;
+const TARGET_SEARCH_STEPS = 8;
+
+/** 品質を二分探索し、targetBytes 以下に収まる最高品質の結果を返す */
+async function renderToTargetSize(
+  bitmap: ImageBitmap,
+  sx: number, sy: number, sw: number, sh: number,
+  dw: number, dh: number,
+  format: string,
+  targetBytes: number,
+): Promise<{ blob: Blob; metTargetSize: boolean }> {
+  let lo = TARGET_MIN_QUALITY;
+  let hi = 1;
+  let best: Blob | null = null;
+  for (let i = 0; i < TARGET_SEARCH_STEPS; i++) {
+    const mid = (lo + hi) / 2;
+    const blob = await renderToBlob(bitmap, sx, sy, sw, sh, dw, dh, format, mid);
+    if (blob.size <= targetBytes) {
+      best = blob;
+      lo = mid;
+    } else {
+      hi = mid;
+    }
+  }
+  if (best) return { blob: best, metTargetSize: true };
+  // 探索範囲内で目標を満たせなかった場合は最低品質で再試行し、その結果を返す
+  const fallback = await renderToBlob(bitmap, sx, sy, sw, sh, dw, dh, format, TARGET_MIN_QUALITY);
+  return { blob: fallback, metTargetSize: fallback.size <= targetBytes };
+}
+
+/** 出力ファイル名: 元のベース名 + _processed + 出力形式の拡張子 */
+export function outputFileName(originalName: string, format: OutputFormat): string {
+  const base = originalName.replace(/\.[^.]+$/, "");
+  return `${base}_processed.${FORMAT_EXTENSION[format]}`;
 }
 
 export function formatBytes(bytes: number): string {
