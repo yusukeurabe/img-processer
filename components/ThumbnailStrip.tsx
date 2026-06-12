@@ -51,7 +51,7 @@ export function ThumbnailStrip({
               type="button"
               onClick={() => onRemove(item.id)}
               aria-label={`${item.source.file.name} を削除`}
-              className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-neutral-700 text-white text-xs leading-none hover:bg-red-600"
+              className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 rounded-full bg-neutral-700 text-white text-xs leading-none hover:bg-red-600"
             >
               ×
             </button>
