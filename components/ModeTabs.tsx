@@ -10,11 +10,12 @@ type Props = {
 const TABS: { value: Mode; label: string; description: string }[] = [
   { value: "resize", label: "リサイズ", description: "縦横ピクセル数に縮小/拡大" },
   { value: "crop", label: "切り抜き", description: "範囲を指定して切り抜き" },
+  { value: "compress", label: "圧縮のみ", description: "サイズはそのまま軽量化" },
 ];
 
 export function ModeTabs({ mode, onChange }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-2 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-900">
+    <div className="grid grid-cols-3 gap-2 p-1 rounded-xl bg-neutral-100 dark:bg-neutral-900">
       {TABS.map((tab) => {
         const active = mode === tab.value;
         return (

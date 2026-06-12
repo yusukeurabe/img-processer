@@ -74,7 +74,7 @@ export default function Home() {
     if (!source) return false;
     if (mode === "resize") return resize.width > 0 && resize.height > 0;
     if (mode === "crop") return cropArea !== null && cropArea.width > 0 && cropArea.height > 0;
-    return false;
+    return true; // compress
   }, [source, mode, resize, cropArea]);
 
   const handleProcess = useCallback(async () => {
@@ -162,9 +162,13 @@ export default function Home() {
                   height={resize.height}
                   onChange={setResize}
                 />
-              ) : (
+              ) : mode === "crop" ? (
                 <p className="text-xs text-neutral-500">
                   左の画像をドラッグして範囲を指定してください。
+                </p>
+              ) : (
+                <p className="text-xs text-neutral-500">
+                  サイズ（ピクセル数）はそのまま、出力形式と品質でファイル容量を軽くします。
                 </p>
               )}
             </div>
