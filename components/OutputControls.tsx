@@ -1,5 +1,6 @@
 "use client";
 
+import { useI18n } from "@/components/LanguageProvider";
 import { FORMAT_LABEL, type OutputFormat } from "@/lib/types";
 
 type Props = {
@@ -17,12 +18,13 @@ export function OutputControls({
   onFormatChange,
   onQualityChange,
 }: Props) {
+  const { t } = useI18n();
   const qualityDisabled = format === "image/png";
 
   return (
     <div className="space-y-4">
       <div>
-        <div className="text-xs text-neutral-500 mb-2">出力形式</div>
+        <div className="text-xs text-neutral-500 mb-2">{t.output.format}</div>
         <div className="grid grid-cols-3 gap-2">
           {FORMATS.map((f) => {
             const active = format === f;
@@ -48,7 +50,8 @@ export function OutputControls({
         <label className="block">
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-neutral-500">
-              品質 {qualityDisabled ? "（PNGは可逆圧縮のため無効）" : ""}
+              {t.output.quality}{" "}
+              {qualityDisabled ? t.output.qualityDisabledNote : ""}
             </span>
             <span className="text-xs text-neutral-700 dark:text-neutral-300 tabular-nums">
               {Math.round(quality * 100)}
@@ -65,8 +68,8 @@ export function OutputControls({
             className="w-full"
           />
           <div className="flex justify-between text-[10px] text-neutral-400 mt-1">
-            <span>圧縮優先</span>
-            <span>画質優先</span>
+            <span>{t.output.smallerFile}</span>
+            <span>{t.output.betterQuality}</span>
           </div>
         </label>
       </div>

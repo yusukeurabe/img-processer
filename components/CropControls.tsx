@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import ReactCrop, { type PercentCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
+import { useI18n } from "@/components/LanguageProvider";
 import type { CropArea } from "@/lib/types";
 
 type Props = {
@@ -14,8 +15,8 @@ type Props = {
   onCropChange: (area: CropArea, percentCrop: PercentCrop) => void;
 };
 
-const ASPECT_PRESETS: { label: string; value: number | undefined }[] = [
-  { label: "自由", value: undefined },
+const ASPECT_PRESETS: { label: string | null; value: number | undefined }[] = [
+  { label: null, value: undefined },
   { label: "1:1", value: 1 },
   { label: "4:3", value: 4 / 3 },
   { label: "3:4", value: 3 / 4 },
@@ -62,6 +63,7 @@ export function CropControls({
   initialCrop,
   onCropChange,
 }: Props) {
+  const { t } = useI18n();
   const [aspect, setAspect] = useState<number | undefined>(undefined);
   const [crop, setCrop] = useState<PercentCrop>(
     () => initialCrop ?? defaultCrop(undefined, naturalWidth, naturalHeight),
@@ -111,20 +113,20 @@ export function CropControls({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
-            alt="切り抜き対象"
+            alt={t.crop.target}
             className="max-h-[60vh] w-auto object-contain"
           />
         </ReactCrop>
       </div>
       <div>
-        <div className="text-xs text-neutral-500 mb-2">アスペクト比</div>
+        <div className="text-xs text-neutral-500 mb-2">{t.crop.aspectRatio}</div>
         <div className="flex gap-2 flex-wrap">
           {ASPECT_PRESETS.map((p) => {
             const active = aspect === p.value;
             return (
               <button
                 type="button"
-                key={p.label}
+                key={String(p.value)}
                 onClick={() => setAspect(p.value)}
                 className={[
                   "rounded-lg px-3 py-1.5 text-sm transition-colors",
@@ -133,15 +135,13 @@ export function CropControls({
                     : "bg-neutral-100 dark:bg-neutral-800 hover:bg-neutral-200 dark:hover:bg-neutral-700",
                 ].join(" ")}
               >
-                {p.label}
+                {p.label ?? t.crop.free}
               </button>
             );
           })}
         </div>
         <p className="text-xs text-neutral-500 mt-2">
-          {aspect === undefined
-            ? "枠の角・辺をドラッグして自由にサイズ変更できます。"
-            : "枠の角・辺をドラッグするとアスペクト比を保ったままサイズ変更できます。"}
+          {aspect === undefined ? t.crop.hintFree : t.crop.hintFixed}
         </p>
       </div>
     </div>

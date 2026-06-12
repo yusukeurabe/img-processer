@@ -9,10 +9,13 @@ import { CropControls } from "@/components/CropControls";
 import { OutputControls } from "@/components/OutputControls";
 import { TargetSizeInput } from "@/components/TargetSizeInput";
 import { ResultsPanel } from "@/components/ResultsPanel";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useI18n } from "@/components/LanguageProvider";
 import { disposeSource, loadImage, processImage } from "@/lib/imageProcessor";
 import type { ImageItem, Mode, OutputFormat } from "@/lib/types";
 
 export default function Home() {
+  const { t } = useI18n();
   const [items, setItems] = useState<ImageItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("resize");
@@ -25,7 +28,7 @@ export default function Home() {
     current: number;
     total: number;
   } | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const [failedFiles, setFailedFiles] = useState<string[] | null>(null);
 
   // 最新の items を参照するための ref（アンマウント時の解放と順次処理で使用）
   const itemsRef = useRef(items);
@@ -44,7 +47,7 @@ export default function Home() {
 
   const handleAddFiles = useCallback(async (files: File[]) => {
     if (busyRef.current) return;
-    setLoadError(null);
+    setFailedFiles(null);
     const loaded: ImageItem[] = [];
     const failed: string[] = [];
     for (const file of files) {
@@ -70,7 +73,7 @@ export default function Home() {
       }
     }
     if (failed.length > 0) {
-      setLoadError(`読み込めなかったファイル: ${failed.join(", ")}`);
+      setFailedFiles(failed);
     }
     if (loaded.length > 0) {
       setItems((prev) => [...prev, ...loaded]);
@@ -96,7 +99,7 @@ export default function Home() {
     itemsRef.current.forEach((i) => disposeSource(i.source));
     setItems([]);
     setSelectedId(null);
-    setLoadError(null);
+    setFailedFiles(null);
     setProgress(null);
   }, []);
 
@@ -148,9 +151,10 @@ export default function Home() {
           });
           updateItem(item.id, { status: "done", result });
         } catch (e) {
+          // 言語切替に追随できるよう、表示用の汎用文言は表示側で補う
           updateItem(item.id, {
             status: "error",
-            error: e instanceof Error ? e.message : "処理に失敗しました",
+            error: e instanceof Error && e.message ? e.message : null,
           });
         }
       }
@@ -163,33 +167,34 @@ export default function Home() {
 
   return (
     <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">
-      <header className="mb-8 flex items-center justify-between">
+      <header className="mb-8 flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
-            画像トリミング・圧縮
+            {t.app.title}
           </h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            ブラウザだけで動きます。画像はサーバーに送信されません。
-          </p>
+          <p className="text-sm text-neutral-500 mt-1">{t.app.tagline}</p>
         </div>
-        {items.length > 0 && (
-          <button
-            type="button"
-            onClick={handleClearAll}
-            disabled={busy}
-            className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 disabled:opacity-50"
-          >
-            すべてクリア
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          {items.length > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              disabled={busy}
+              className="text-sm text-neutral-500 hover:text-neutral-900 dark:hover:text-neutral-100 disabled:opacity-50"
+            >
+              {t.app.clearAll}
+            </button>
+          )}
+          <LanguageToggle />
+        </div>
       </header>
 
       {items.length === 0 ? (
         <div className="space-y-4">
           <ImageDropzone onFiles={handleAddFiles} />
-          {loadError && (
+          {failedFiles && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-900 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-              {loadError}
+              {t.app.loadFailed(failedFiles.join(", "))}
             </div>
           )}
         </div>
@@ -225,14 +230,14 @@ export default function Home() {
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={selected.source.url}
-                  alt="プレビュー"
+                  alt={t.app.preview}
                   className="max-h-[60vh] w-auto object-contain rounded-lg"
                 />
               </div>
             ) : null}
-            {loadError && (
+            {failedFiles && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-900 px-3 py-2 text-sm text-amber-700 dark:text-amber-300">
-                {loadError}
+                {t.app.loadFailed(failedFiles.join(", "))}
               </div>
             )}
             <ResultsPanel items={items} format={format} />
@@ -251,13 +256,9 @@ export default function Home() {
                   onChange={(size) => updateItem(selected.id, { resize: size })}
                 />
               ) : mode === "crop" ? (
-                <p className="text-xs text-neutral-500">
-                  左の画像をドラッグして範囲を指定してください。サムネイルで画像を切り替えると、それぞれの範囲が保存されます。
-                </p>
+                <p className="text-xs text-neutral-500">{t.app.cropHint}</p>
               ) : (
-                <p className="text-xs text-neutral-500">
-                  サイズ（ピクセル数）はそのまま、出力形式と品質でファイル容量を軽くします。
-                </p>
+                <p className="text-xs text-neutral-500">{t.app.compressHint}</p>
               )}
             </div>
 
@@ -289,10 +290,10 @@ export default function Home() {
               ].join(" ")}
             >
               {busy && progress
-                ? `処理中… (${progress.current}/${progress.total})`
+                ? t.app.processing(progress.current, progress.total)
                 : items.length > 1
-                  ? `すべて処理する（${items.length}枚）`
-                  : "画像を処理する"}
+                  ? t.app.processAll(items.length)
+                  : t.app.processOne}
             </button>
           </aside>
         </div>

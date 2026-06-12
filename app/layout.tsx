@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { LanguageProvider } from "@/components/LanguageProvider";
+import { dictionaries } from "@/lib/i18n";
 
+// タイトルは言語切替に追随させるため LanguageProvider 側で <title> を描画する
 export const metadata: Metadata = {
-  title: "画像トリミング・圧縮",
-  description: "ブラウザだけで画像のリサイズ・切り抜き・圧縮ができるツール",
+  description: dictionaries.en.meta.description,
 };
 
 export default function RootLayout({
@@ -12,9 +14,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ja" className="h-full antialiased">
+    <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col bg-neutral-50 dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100 font-sans">
-        {children}
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );

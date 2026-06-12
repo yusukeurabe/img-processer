@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 
 type Props = {
   naturalWidth: number;
@@ -17,6 +18,7 @@ export function ResizeControls({
   height,
   onChange,
 }: Props) {
+  const { t } = useI18n();
   const [locked, setLocked] = useState(true);
   const aspect = naturalWidth / naturalHeight;
 
@@ -46,11 +48,11 @@ export function ResizeControls({
     <div className="space-y-4">
       <div>
         <div className="text-xs text-neutral-500 mb-2">
-          元のサイズ: {naturalWidth} × {naturalHeight} px
+          {t.resize.originalSize(naturalWidth, naturalHeight)}
         </div>
         <div className="grid grid-cols-[1fr_auto_1fr] gap-2 items-end">
           <label className="block">
-            <span className="text-xs text-neutral-500">幅 (px)</span>
+            <span className="text-xs text-neutral-500">{t.resize.width}</span>
             <input
               type="number"
               min={1}
@@ -63,7 +65,7 @@ export function ResizeControls({
           <button
             type="button"
             onClick={() => setLocked(!locked)}
-            title={locked ? "アスペクト比固定中" : "自由"}
+            title={locked ? t.resize.locked : t.resize.unlocked}
             className={[
               "h-10 w-10 rounded-lg flex items-center justify-center transition-colors",
               locked
@@ -74,7 +76,7 @@ export function ResizeControls({
             {locked ? "🔒" : "🔓"}
           </button>
           <label className="block">
-            <span className="text-xs text-neutral-500">高さ (px)</span>
+            <span className="text-xs text-neutral-500">{t.resize.height}</span>
             <input
               type="number"
               min={1}
@@ -87,7 +89,7 @@ export function ResizeControls({
         </div>
       </div>
       <div>
-        <div className="text-xs text-neutral-500 mb-2">プリセット</div>
+        <div className="text-xs text-neutral-500 mb-2">{t.resize.presets}</div>
         <div className="flex gap-2 flex-wrap">
           {[
             { label: "25%", ratio: 0.25 },

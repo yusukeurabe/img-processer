@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 
 type Props = {
   onFiles: (files: File[]) => void;
@@ -10,6 +11,7 @@ type Props = {
 const IMAGE_EXTS = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?|svg)$/i;
 
 export function ImageDropzone({ onFiles }: Props) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -20,12 +22,12 @@ export function ImageDropzone({ onFiles }: Props) {
         (f) => f.type.startsWith("image/") || IMAGE_EXTS.test(f.name),
       );
       if (images.length === 0) {
-        alert("画像ファイルを選択してください");
+        alert(t.dropzone.onlyImages);
         return;
       }
       onFiles(images);
     },
-    [onFiles],
+    [onFiles, t],
   );
 
   return (
@@ -64,11 +66,9 @@ export function ImageDropzone({ onFiles }: Props) {
         <path d="M21 15l-5-5L5 21" />
       </svg>
       <p className="text-lg font-medium text-neutral-700 dark:text-neutral-200">
-        クリックして画像を選択 または ドラッグ&ドロップ（複数可）
+        {t.dropzone.title}
       </p>
-      <p className="text-sm text-neutral-500 mt-2">
-        JPEG / PNG / WebP などの画像ファイル
-      </p>
+      <p className="text-sm text-neutral-500 mt-2">{t.dropzone.subtitle}</p>
       <input
         ref={inputRef}
         type="file"
