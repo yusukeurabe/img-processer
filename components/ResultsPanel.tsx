@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { formatBytes, outputFileName } from "@/lib/imageProcessor";
 import { buildZip, downloadBlob, uniqueNames } from "@/lib/zip";
 import type { ImageItem, OutputFormat } from "@/lib/types";
@@ -18,15 +18,17 @@ function ResultRow({
   downloadName: string;
 }) {
   const result = item.result;
-  const previewUrl = useMemo(
-    () => (result ? URL.createObjectURL(result.blob) : null),
-    [result],
-  );
+  // StrictMode の mount→cleanup→remount でも失効しないよう、URLは effect 内で生成する
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+    if (!result) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(result.blob);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [result]);
 
   if (item.status === "error") {
     return (
@@ -81,6 +83,7 @@ function ResultRow({
 
 export function ResultsPanel({ items, format }: Props) {
   const [zipping, setZipping] = useState(false);
+  const [zipError, setZipError] = useState<string | null>(null);
 
   const shown = items.filter(
     (i) => i.status === "done" || i.status === "error",
@@ -96,6 +99,7 @@ export function ResultsPanel({ items, format }: Props) {
 
   const handleZip = async () => {
     setZipping(true);
+    setZipError(null);
     try {
       const blob = await buildZip(
         done.flatMap((item) =>
@@ -105,6 +109,8 @@ export function ResultsPanel({ items, format }: Props) {
         ),
       );
       downloadBlob(blob, "images_processed.zip");
+    } catch {
+      setZipError("ZIPの作成に失敗しました。枚数を減らして再度お試しください。");
     } finally {
       setZipping(false);
     }
@@ -125,6 +131,9 @@ export function ResultsPanel({ items, format }: Props) {
           </button>
         )}
       </div>
+      {zipError && (
+        <p className="text-xs text-red-600 dark:text-red-400 mb-2">{zipError}</p>
+      )}
       <div className="divide-y divide-neutral-100 dark:divide-neutral-900">
         {shown.map((item) => (
           <ResultRow
