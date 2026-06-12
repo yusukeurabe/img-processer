@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 import type { ImageItem } from "@/lib/types";
 
 // 一部環境ではMIMEタイプが空になるため、拡張子でも判定する（ImageDropzoneと同じ基準）
@@ -21,6 +22,7 @@ export function ThumbnailStrip({
   onRemove,
   onAddFiles,
 }: Props) {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -50,7 +52,7 @@ export function ThumbnailStrip({
             <button
               type="button"
               onClick={() => onRemove(item.id)}
-              aria-label={`${item.source.file.name} を削除`}
+              aria-label={t.thumbnails.remove(item.source.file.name)}
               className="absolute -top-1.5 -right-1.5 z-10 h-5 w-5 rounded-full bg-neutral-700 text-white text-xs leading-none hover:bg-red-600"
             >
               ×
@@ -75,7 +77,7 @@ export function ThumbnailStrip({
       <button
         type="button"
         onClick={() => inputRef.current?.click()}
-        aria-label="画像を追加"
+        aria-label={t.thumbnails.add}
         className="shrink-0 h-16 w-16 rounded-lg border-2 border-dashed border-neutral-300 dark:border-neutral-700 text-neutral-400 hover:border-indigo-400 hover:text-indigo-500 text-2xl"
       >
         ＋

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useI18n } from "@/components/LanguageProvider";
 import { formatBytes, outputFileName } from "@/lib/imageProcessor";
 import { buildZip, downloadBlob, uniqueNames } from "@/lib/zip";
 import { FORMAT_EXTENSION, type ImageItem, type OutputFormat } from "@/lib/types";
@@ -24,6 +25,7 @@ function ResultRow({
   item: ImageItem;
   downloadName: string;
 }) {
+  const { t } = useI18n();
   const result = item.result;
   // StrictMode の mount→cleanup→remount でも失効しないよう、URLは effect 内で生成する
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -42,7 +44,7 @@ function ResultRow({
       <div className="py-3 text-sm min-w-0">
         <div className="truncate">{item.source.file.name}</div>
         <div className="text-red-600 dark:text-red-400 text-xs mt-0.5">
-          {item.error ?? "処理に失敗しました"}
+          {item.error ?? t.app.processFailed}
         </div>
       </div>
     );
@@ -73,7 +75,7 @@ function ResultRow({
         </div>
         {result.metTargetSize === false && (
           <div className="text-xs text-amber-600 mt-0.5">
-            目標サイズに届きませんでした
+            {t.results.missedTarget}
           </div>
         )}
       </div>
@@ -82,15 +84,16 @@ function ResultRow({
         download={downloadName}
         className="shrink-0 rounded-lg bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-medium px-3 py-2 transition-colors"
       >
-        ダウンロード
+        {t.results.download}
       </a>
     </div>
   );
 }
 
 export function ResultsPanel({ items, format }: Props) {
+  const { t } = useI18n();
   const [zipping, setZipping] = useState(false);
-  const [zipError, setZipError] = useState<string | null>(null);
+  const [zipFailed, setZipFailed] = useState(false);
 
   const shown = items.filter(
     (i) => i.status === "done" || i.status === "error",
@@ -106,7 +109,7 @@ export function ResultsPanel({ items, format }: Props) {
 
   const handleZip = async () => {
     setZipping(true);
-    setZipError(null);
+    setZipFailed(false);
     try {
       const blob = await buildZip(
         done.flatMap((item) =>
@@ -117,7 +120,7 @@ export function ResultsPanel({ items, format }: Props) {
       );
       downloadBlob(blob, "images_processed.zip");
     } catch {
-      setZipError("ZIPの作成に失敗しました。枚数を減らして再度お試しください。");
+      setZipFailed(true);
     } finally {
       setZipping(false);
     }
@@ -126,7 +129,7 @@ export function ResultsPanel({ items, format }: Props) {
   return (
     <div className="rounded-2xl border border-neutral-200 dark:border-neutral-800 p-5 bg-white dark:bg-neutral-950">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold">処理結果</h3>
+        <h3 className="text-sm font-semibold">{t.results.title}</h3>
         {done.length >= 2 && (
           <button
             type="button"
@@ -134,12 +137,14 @@ export function ResultsPanel({ items, format }: Props) {
             disabled={zipping}
             className="rounded-lg bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-white text-sm font-medium px-4 py-2 transition-colors"
           >
-            {zipping ? "ZIP作成中…" : "ZIPでまとめてダウンロード"}
+            {zipping ? t.results.zipping : t.results.zipAll}
           </button>
         )}
       </div>
-      {zipError && (
-        <p className="text-xs text-red-600 dark:text-red-400 mb-2">{zipError}</p>
+      {zipFailed && (
+        <p className="text-xs text-red-600 dark:text-red-400 mb-2">
+          {t.results.zipFailed}
+        </p>
       )}
       <div className="divide-y divide-neutral-100 dark:divide-neutral-900">
         {shown.map((item) => (
