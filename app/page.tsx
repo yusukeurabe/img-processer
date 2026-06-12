@@ -20,6 +20,7 @@ export default function Home() {
   const [quality, setQuality] = useState(0.82);
   const [targetSizeKB, setTargetSizeKB] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const busyRef = useRef(false);
   const [progress, setProgress] = useState<{
     current: number;
     total: number;
@@ -28,7 +29,9 @@ export default function Home() {
 
   // 最新の items を参照するための ref（アンマウント時の解放と順次処理で使用）
   const itemsRef = useRef(items);
-  itemsRef.current = items;
+  useEffect(() => {
+    itemsRef.current = items;
+  });
   useEffect(() => {
     return () => itemsRef.current.forEach((i) => disposeSource(i.source));
   }, []);
@@ -40,6 +43,7 @@ export default function Home() {
   }, []);
 
   const handleAddFiles = useCallback(async (files: File[]) => {
+    if (busyRef.current) return;
     setLoadError(null);
     const loaded: ImageItem[] = [];
     const failed: string[] = [];
@@ -75,6 +79,7 @@ export default function Home() {
   }, []);
 
   const handleRemove = useCallback((id: string) => {
+    if (busyRef.current) return;
     const prev = itemsRef.current;
     const idx = prev.findIndex((i) => i.id === id);
     if (idx === -1) return;
@@ -87,6 +92,7 @@ export default function Home() {
   }, []);
 
   const handleClearAll = useCallback(() => {
+    if (busyRef.current) return;
     itemsRef.current.forEach((i) => disposeSource(i.source));
     setItems([]);
     setSelectedId(null);
@@ -107,7 +113,8 @@ export default function Home() {
   }, [items, mode]);
 
   const handleProcessAll = useCallback(async () => {
-    if (!canProcess || busy) return;
+    if (!canProcess || busyRef.current) return;
+    busyRef.current = true;
     setBusy(true);
     const targets = itemsRef.current;
     setItems((prev) =>
@@ -118,37 +125,41 @@ export default function Home() {
         error: null,
       })),
     );
-    for (let i = 0; i < targets.length; i++) {
-      const item = targets[i];
-      setProgress({ current: i + 1, total: targets.length });
-      updateItem(item.id, { status: "processing" });
-      try {
-        const result = await processImage(item.source, {
-          mode,
-          resize: mode === "resize" ? item.resize : undefined,
-          crop: mode === "crop" ? (item.cropArea ?? undefined) : undefined,
-          output: {
-            format,
-            quality,
-            targetSizeKB:
-              mode === "compress" &&
-              format !== "image/png" &&
-              targetSizeKB !== null
-                ? targetSizeKB
-                : undefined,
-          },
-        });
-        updateItem(item.id, { status: "done", result });
-      } catch (e) {
-        updateItem(item.id, {
-          status: "error",
-          error: e instanceof Error ? e.message : "処理に失敗しました",
-        });
+    try {
+      for (let i = 0; i < targets.length; i++) {
+        const item = targets[i];
+        setProgress({ current: i + 1, total: targets.length });
+        updateItem(item.id, { status: "processing" });
+        try {
+          const result = await processImage(item.source, {
+            mode,
+            resize: mode === "resize" ? item.resize : undefined,
+            crop: mode === "crop" ? (item.cropArea ?? undefined) : undefined,
+            output: {
+              format,
+              quality,
+              targetSizeKB:
+                mode === "compress" &&
+                format !== "image/png" &&
+                targetSizeKB !== null
+                  ? targetSizeKB
+                  : undefined,
+            },
+          });
+          updateItem(item.id, { status: "done", result });
+        } catch (e) {
+          updateItem(item.id, {
+            status: "error",
+            error: e instanceof Error ? e.message : "処理に失敗しました",
+          });
+        }
       }
+    } finally {
+      setProgress(null);
+      setBusy(false);
+      busyRef.current = false;
     }
-    setProgress(null);
-    setBusy(false);
-  }, [canProcess, busy, mode, format, quality, targetSizeKB, updateItem]);
+  }, [canProcess, mode, format, quality, targetSizeKB, updateItem]);
 
   return (
     <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12">

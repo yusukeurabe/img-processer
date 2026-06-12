@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { formatBytes, outputFileName } from "@/lib/imageProcessor";
 import { buildZip, downloadBlob, uniqueNames } from "@/lib/zip";
-import type { ImageItem, OutputFormat } from "@/lib/types";
+import { FORMAT_EXTENSION, type ImageItem, type OutputFormat } from "@/lib/types";
+
+// 実際にエンコードされた形式から拡張子を決める。Safari の WebP→PNG フォールバックや、
+// 処理後に出力形式を切り替えた場合でも中身と拡張子が一致するようにする
+function actualFormat(item: ImageItem, fallback: OutputFormat): OutputFormat {
+  const type = item.result?.blob.type;
+  return type && type in FORMAT_EXTENSION ? (type as OutputFormat) : fallback;
+}
 
 type Props = {
   items: ImageItem[];
@@ -90,7 +97,7 @@ export function ResultsPanel({ items, format }: Props) {
   );
   const done = shown.filter((i) => i.result !== null);
   const names = uniqueNames(
-    done.map((i) => outputFileName(i.source.file.name, format)),
+    done.map((i) => outputFileName(i.source.file.name, actualFormat(i, format))),
   );
   const nameById = new Map<string, string>();
   done.forEach((item, idx) => nameById.set(item.id, names[idx]));
