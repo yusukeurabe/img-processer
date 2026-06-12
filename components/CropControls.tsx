@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ReactCrop, { type PercentCrop } from "react-image-crop";
 import "react-image-crop/dist/ReactCrop.css";
 import type { CropArea } from "@/lib/types";
@@ -9,7 +9,9 @@ type Props = {
   imageUrl: string;
   naturalWidth: number;
   naturalHeight: number;
-  onCropAreaChange: (area: CropArea) => void;
+  /** 保存済みの切り抜き範囲（％）。あれば復元する */
+  initialCrop?: PercentCrop | null;
+  onCropChange: (area: CropArea, percentCrop: PercentCrop) => void;
 };
 
 const ASPECT_PRESETS: { label: string; value: number | undefined }[] = [
@@ -57,25 +59,41 @@ export function CropControls({
   imageUrl,
   naturalWidth,
   naturalHeight,
-  onCropAreaChange,
+  initialCrop,
+  onCropChange,
 }: Props) {
   const [aspect, setAspect] = useState<number | undefined>(undefined);
-  const [crop, setCrop] = useState<PercentCrop>(() =>
-    defaultCrop(undefined, naturalWidth, naturalHeight),
+  const [crop, setCrop] = useState<PercentCrop>(
+    () => initialCrop ?? defaultCrop(undefined, naturalWidth, naturalHeight),
   );
+  const prevAspect = useRef(aspect);
 
+  // このコンポーネントは画像ごとに key で再マウントされる前提
+  // （マウント中に naturalWidth/Height は変わらない）
   useEffect(() => {
+    if (prevAspect.current === aspect) return;
+    prevAspect.current = aspect;
     setCrop(defaultCrop(aspect, naturalWidth, naturalHeight));
   }, [aspect, naturalWidth, naturalHeight]);
 
+  // 親が毎レンダーで新しい関数を渡しても通知ループにならないよう、
+  // コールバックは最新参照で保持し effect の依存から外す
+  const onCropChangeRef = useRef(onCropChange);
   useEffect(() => {
-    onCropAreaChange({
-      x: (crop.x / 100) * naturalWidth,
-      y: (crop.y / 100) * naturalHeight,
-      width: (crop.width / 100) * naturalWidth,
-      height: (crop.height / 100) * naturalHeight,
-    });
-  }, [crop, naturalWidth, naturalHeight, onCropAreaChange]);
+    onCropChangeRef.current = onCropChange;
+  });
+
+  useEffect(() => {
+    onCropChangeRef.current(
+      {
+        x: (crop.x / 100) * naturalWidth,
+        y: (crop.y / 100) * naturalHeight,
+        width: (crop.width / 100) * naturalWidth,
+        height: (crop.height / 100) * naturalHeight,
+      },
+      crop,
+    );
+  }, [crop, naturalWidth, naturalHeight]);
 
   return (
     <div className="space-y-4">
