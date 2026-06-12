@@ -474,16 +474,25 @@ export function CropControls({
   const [crop, setCrop] = useState<PercentCrop>(
     () => initialCrop ?? defaultCrop(undefined, naturalWidth, naturalHeight),
   );
-  const prevAspect = useRef<number | undefined>(undefined);
+  const prevAspect = useRef(aspect);
 
+  // このコンポーネントは画像ごとに key で再マウントされる前提
+  // （マウント中に naturalWidth/Height は変わらない）
   useEffect(() => {
     if (prevAspect.current === aspect) return;
     prevAspect.current = aspect;
     setCrop(defaultCrop(aspect, naturalWidth, naturalHeight));
   }, [aspect, naturalWidth, naturalHeight]);
 
+  // 親が毎レンダーで新しい関数を渡しても通知ループにならないよう、
+  // コールバックは最新参照で保持し effect の依存から外す
+  const onCropChangeRef = useRef(onCropChange);
   useEffect(() => {
-    onCropChange(
+    onCropChangeRef.current = onCropChange;
+  });
+
+  useEffect(() => {
+    onCropChangeRef.current(
       {
         x: (crop.x / 100) * naturalWidth,
         y: (crop.y / 100) * naturalHeight,
@@ -492,17 +501,19 @@ export function CropControls({
       },
       crop,
     );
-  }, [crop, naturalWidth, naturalHeight, onCropChange]);
+  }, [crop, naturalWidth, naturalHeight]);
 ```
+
+**重要:** 通知 effect の依存配列に `onCropChange` を入れてはならない。入れると、親がインラインアロー関数を渡したときに「effect発火→親setState→再レンダー→新しい関数→effect発火…」の無限ループになる（実測で毎秒約2.2万コミット）。上記の最新参照（ref）パターンが恒久対策。
 
 （return 以降の JSX は変更なし）
 
 - [ ] **Step 2: page.tsx の呼び出しを暫定対応**
 
-`app/page.tsx` の `onCropAreaChange={setCropArea}` を以下に変更:
+`app/page.tsx` の `onCropAreaChange={setCropArea}` を以下に変更（setState 関数は安定参照なのでそのまま渡す。余分な第2引数は無視される）:
 
 ```tsx
-                onCropChange={(area) => setCropArea(area)}
+                onCropChange={setCropArea}
 ```
 
 - [ ] **Step 3: ビルド確認**
@@ -1371,6 +1382,7 @@ Playwright MCP（browser_navigate / browser_file_upload / browser_click / browse
 6. 2枚を×ボタンで削除して1枚にする → ZIPボタンが出ない・ボタンラベルが「画像を処理する」になること
 7. 「すべてクリア」→ アップロード画面に戻ること
 8. テキストファイル（例: `echo hi > "$TMPDIR/img-test/not-image.txt"`）を画像2枚と一緒に選択 → 画像だけ読み込まれること
+9. 切り抜きモードで画像を表示したまま数秒待ち、再レンダリングが暴走しないこと（Task 6 レビューで検出した通知ループの回帰確認。コンソールにエラーが出ていないことも確認）
 
 Expected: すべて確認OK。問題があれば修正してから次へ。
 
