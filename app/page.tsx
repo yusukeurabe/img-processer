@@ -29,6 +29,9 @@ export default function Home() {
     total: number;
   } | null>(null);
   const [failedFiles, setFailedFiles] = useState<string[] | null>(null);
+  // 処理完了のたびに増やし、結果セクションへの自動スクロールを起動するカウンタ
+  const [completedRuns, setCompletedRuns] = useState(0);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   // 最新の items を参照するための ref（アンマウント時の解放と順次処理で使用）
   const itemsRef = useRef(items);
@@ -38,6 +41,22 @@ export default function Home() {
   useEffect(() => {
     return () => itemsRef.current.forEach((i) => disposeSource(i.source));
   }, []);
+
+  // 処理後の結果セクションは画面外にあって気づけないため、完了時にそこまでスクロールする。
+  // itemsRef 更新の effect より後に宣言し、同一コミット内で最新の items を参照する
+  useEffect(() => {
+    if (completedRuns === 0) return;
+    const hasResults = itemsRef.current.some(
+      (i) => i.status === "done" || i.status === "error",
+    );
+    if (!hasResults) return;
+    // 各結果行はプレビューURLを effect で作ってから描画されるため、この時点では
+    // パネルの高さが未確定。次フレームまで待ってからスクロール先を確定させる
+    const raf = requestAnimationFrame(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [completedRuns]);
 
   const selected = items.find((i) => i.id === selectedId) ?? null;
 
@@ -162,6 +181,7 @@ export default function Home() {
       setProgress(null);
       setBusy(false);
       busyRef.current = false;
+      setCompletedRuns((n) => n + 1);
     }
   }, [canProcess, mode, format, quality, targetSizeKB, updateItem]);
 
@@ -240,7 +260,9 @@ export default function Home() {
                 {t.app.loadFailed(failedFiles.join(", "))}
               </div>
             )}
-            <ResultsPanel items={items} format={format} />
+            <div ref={resultsRef} className="scroll-mt-6">
+              <ResultsPanel items={items} format={format} />
+            </div>
           </section>
 
           <aside className="space-y-6">
